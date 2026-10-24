@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# base SQLite locale
+*.db
+*.db-journal
+
+# client Prisma généré (recréé à l'installation)
+/lib/generated/
+
+# fiches d'instructions des assistants IA (pas du code de l'application)
+/.agents/
+/.claude/
+/.cursor/
+/.devin/
