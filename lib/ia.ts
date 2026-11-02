@@ -16,7 +16,7 @@ export const FOURNISSEURS = {
 // Modèle utilisé par défaut pour la rédaction (modifiable sans toucher au code
 // via la variable d'environnement MARCUS_MODELE_REDACTION dans Vercel).
 export const MODELE_REDACTION =
-  process.env.MARCUS_MODELE_REDACTION ?? "anthropic/claude-sonnet-5";
+  process.env.MARCUS_MODELE_REDACTION ?? "anthropic/claude-sonnet-5.5";
 
 export type ModeleDispo = { id: string; nom: string; fournisseur: string };
 
