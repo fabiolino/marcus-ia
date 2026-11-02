@@ -1,69 +1,112 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ESPACES_MARCUS } from "@/lib/config";
+import { RUBRIQUES_OFFRE, STATUTS, ETAPES_PROSPECTION } from "@/lib/libelles";
+import { membreConnecte } from "@/lib/membre";
 
-export default function Home() {
+export default async function Accueil() {
+  const { supabase, membre } = await membreConnecte();
+
+  const { data: espaces } = await supabase
+    .from("espaces")
+    .select("id, slug, nom, couleur, marcus_offres(*)")
+    .in("slug", [...ESPACES_MARCUS])
+    .order("ordre");
+
+  const ids = (espaces ?? []).map((e) => e.id);
+  const [{ data: orgs }, { data: brouillons }] = await Promise.all([
+    supabase
+      .from("organisations")
+      .select("espace_id, etape")
+      .in("espace_id", ids)
+      .eq("type", "client")
+      .eq("archive", false),
+    supabase
+      .from("marcus_brouillons")
+      .select("id, sujet, statut, created_at, espace_id, organisations(nom)")
+      .in("espace_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(15),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-10">
+      <section>
+        <h1 className="font-titre text-3xl">Buongiorno{membre ? `, ${membre.nom.split(" ")[0]}` : ""}</h1>
+        <p className="mt-1 text-encre-doux">
+          Marcus prépare, tu valides. Rien ne part sans toi.
+        </p>
+        {!membre && (
+          <p className="mt-4 rounded-md bg-terracotta/10 p-3 text-sm text-terracotta">
+            Ton compte n&apos;est pas un membre actif de QG Moments : aucune donnée n&apos;est visible.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        )}
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2">
+        {(espaces ?? []).map((e) => {
+          const offre = (e.marcus_offres as unknown as Record<string, string | null>[] | null)?.[0] ??
+            (e.marcus_offres as unknown as Record<string, string | null> | null);
+          const remplies = RUBRIQUES_OFFRE.filter((r) => offre?.[r.cle]?.trim()).length;
+          const aContacter = (orgs ?? []).filter(
+            (o) => o.espace_id === e.id && ETAPES_PROSPECTION.includes(o.etape),
+          ).length;
+          const enAttente = (brouillons ?? []).filter(
+            (b) => b.espace_id === e.id && b.statut === "brouillon",
+          ).length;
+          return (
+            <Link
+              key={e.id}
+              href={`/espace/${e.slug}`}
+              className="rounded-lg border border-trait bg-carte p-5 transition hover:border-terracotta"
+            >
+              <h2 className="font-titre text-xl">{e.nom}</h2>
+              <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <dt className="text-xs text-encre-doux">À démarcher</dt>
+                  <dd className="text-2xl font-semibold">{aContacter}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-encre-doux">À relire</dt>
+                  <dd className="text-2xl font-semibold">{enAttente}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-encre-doux">Fiche offre</dt>
+                  <dd className={`text-2xl font-semibold ${remplies < 4 ? "text-terracotta" : "text-olive"}`}>
+                    {remplies}/{RUBRIQUES_OFFRE.length}
+                  </dd>
+                </div>
+              </dl>
+            </Link>
+          );
+        })}
+      </section>
+
+      <section>
+        <h2 className="font-titre text-xl">Derniers brouillons</h2>
+        {brouillons?.length ? (
+          <ul className="mt-3 divide-y divide-trait rounded-lg border border-trait bg-carte">
+            {brouillons.map((b) => {
+              const s = STATUTS[b.statut];
+              const org = b.organisations as unknown as { nom: string } | null;
+              return (
+                <li key={b.id}>
+                  <Link href={`/brouillons/${b.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-papier">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{org?.nom}</span>
+                      <span className="block truncate text-sm text-encre-doux">{b.sujet}</span>
+                    </span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${s.classe}`}>{s.libelle}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-encre-doux">
+            Aucun brouillon pour l&apos;instant. Ouvre TravelMate ou Mondo et demande à Marcus d&apos;en préparer un.
+          </p>
+        )}
+      </section>
     </div>
   );
 }
