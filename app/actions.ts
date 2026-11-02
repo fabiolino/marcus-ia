@@ -80,7 +80,9 @@ export async function genererBrouillon(formData: FormData) {
 
   const contact = contacts?.find((c) => c.email) ?? contacts?.[0] ?? null;
 
-  const resultat = await redigerProspection({
+  let resultat: Awaited<ReturnType<typeof redigerProspection>>;
+  try {
+    resultat = await redigerProspection({
     marque: espace.nom,
     offre: offre as FicheOffre | null,
     modele,
@@ -99,7 +101,13 @@ export async function genererBrouillon(formData: FormData) {
         resume: e.resume,
       })),
     },
-  });
+    });
+  } catch (e) {
+    console.error("Agent de prospection :", e);
+    const msg = e instanceof Error ? e.message : "";
+    const code = /credit|balance|payment|insufficient|402/i.test(msg) ? "credit" : "ia";
+    redirect(`/espace/${espace.slug}?erreur=${code}`);
+  }
 
   const { data: brouillon, error: errIns } = await supabase
     .from("marcus_brouillons")

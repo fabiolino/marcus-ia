@@ -11,7 +11,7 @@ export const maxDuration = 60;
 
 export default async function Espace({ params, searchParams }: PageProps<"/espace/[slug]">) {
   const { slug } = await params;
-  const { modele, enregistre, tout } = await searchParams;
+  const { modele, enregistre, tout, erreur } = await searchParams;
   const { supabase } = await membreConnecte();
 
   const { data: espace } = await supabase
@@ -50,6 +50,13 @@ export default async function Espace({ params, searchParams }: PageProps<"/espac
       <div>
         <Link href="/" className="text-sm text-encre-doux hover:text-encre">← Accueil</Link>
         <h1 className="mt-2 font-titre text-3xl">{espace.nom}</h1>
+        {erreur && (
+          <p className="mt-3 rounded-md bg-terracotta/10 p-3 text-sm text-terracotta">
+            {erreur === "credit"
+              ? "Marcus n'a pas pu rédiger : le crédit de la passerelle d'IA est épuisé. Il faut en ajouter dans Vercel (AI Gateway)."
+              : "Marcus n'a pas pu rédiger ce brouillon (l'IA n'a pas répondu). Réessaie, ou choisis une autre IA."}
+          </p>
+        )}
       </div>
 
       {/* Fiche offre */}
