@@ -20,7 +20,9 @@ export default async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   const connecte = Boolean(data?.claims?.sub);
-  const surConnexion = request.nextUrl.pathname.startsWith("/connexion");
+  const chemin = request.nextUrl.pathname;
+  if (chemin === "/api/sante") return response;
+  const surConnexion = chemin.startsWith("/connexion");
 
   if (!connecte && !surConnexion) {
     return NextResponse.redirect(new URL("/connexion", request.url));
